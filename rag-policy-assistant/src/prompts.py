@@ -24,6 +24,7 @@ PROMPT_V2 = ChatPromptTemplate.from_template(
 5. Do NOT use outside knowledge.
 6. If the context contains conflicting information, state the conflict clearly.
 7. Structure your answer clearly with bullet points if applicable.
+8. If information is partially present but inconclusive, state this in one sentence and refuse.
 
 **Context:**
 {context}

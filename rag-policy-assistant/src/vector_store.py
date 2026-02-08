@@ -1,4 +1,3 @@
-import chromadb
 import os
 import shutil
 import uuid
@@ -18,6 +17,8 @@ class VectorStore:
             persist_directory (str): Local directory to persist vector DB.
             collection_name (str): Name of the Chroma collection.
         """
+        import chromadb
+        
         self.persist_directory = persist_directory
         self.collection_name = collection_name
         

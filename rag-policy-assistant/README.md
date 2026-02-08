@@ -1,125 +1,82 @@
-# Policy Assistant RAG
+# RAG Policy Assistant
 
-A Retrieval-Augmented Generation (RAG) system designed to answer questions about company policies (Refund, Cancellation, Shipping) using strict grounding to prevent hallucinations.
+## 1. Project Overview
+This project is a Retrieval-Augmented Generation (RAG) based question-answering assistant designed to query company policy documents (Refund, Cancellation, and Shipping policies). The system is engineered to provide grounded answers strictly based on the provided source text, minimizing hallucinations and ensuring that users receive accurate information derived solely from the official documentation.
 
-## Project Overview
+## 2. Architecture Overview
+The system follows a standard RAG architecture:
 
-This tool allows users to query a set of PDF policy documents. It uses a semantic search backend to retrieve relevant sections and an LLM (via Groq) to generate answers *only* from that context.
+1.  **Ingestion**: PDF documents are loaded and processed.
+2.  **Chunking**: Text is split into manageable segments.
+3.  **Embedding & Storage**: Chunks are embedded and stored in a vector database (ChromaDB).
+4.  **Retrieval**: User queries are converted to embeddings to find semantically similar chunks.
+5.  **Generation**: The retrieved context and the user query are passed to a Large Language Model (LLM) via a strict prompt to generate an answer.
 
-**Key Features:**
-*   **Strict Grounding:** The system explicitly refuses to answer if information is not found in the documents.
-*   **Deterministic Chunking:** Uses token-based splitting for consistent context windows.
-*   **Dual Prompting:** Implements both a baseline (v1) and a strict, anti-hallucination (v2) prompt.
-*   **Evaluation Suite:** Includes a script to test the system against a set of known questions.
+```
+[PDF Docs] -> [Loader] -> [Chunker] -> [Vector DB]
+                                           ^
+                                           | (Retrieval)
+[User Query] -> [Embedding] ---------------+
+                                           |
+                                     [LLM Context] -> [Answer]
+```
 
-## Architecture
+## 3. Data Preparation
+-   **Loading**: `PyPDFLoader` is used to extract text from PDF files located in the `data/` directory.
+-   **Cleaning**: Basic whitespace normalization is applied during loading.
+-   **Chunking**: The text is split using `RecursiveCharacterTextSplitter`.
+    -   **Chunk Size**: 500 tokens. This size was chosen to capture sufficient context for a policy clause without including too much irrelevant information.
+    -   **Overlap**: 75 tokens. This ensures continuity between chunks, preventing sentences or logical clauses from being cut off at boundaries.
 
-The system follows a standard RAG pipeline:
+## 4. RAG Pipeline
+-   **Vector Database**: ChromaDB is used as the local vector store. It handles the storage of embeddings and performs similarity searches.
+-   **Retrieval**: The system queries the top `k` (default 3) most relevant chunks based on cosine similarity to the user's query.
+-   **Generation**: The `llama-3.3-70b-versatile` model (via Groq) is used for generation. It receives the retrieved chunks as "Context" and the user's question, producing a natural language response.
 
-1.  **Ingestion:**
-    *   **Loader:** `PyPDFLoader` extracts text from PDFs in `data/`.
-    *   **Chunker:** `RecursiveCharacterTextSplitter` (Token-based) splits text into ~500 token chunks with 75 token overlap. This ensures semantic continuity.
-    *   **Embedding:** `sentence-transformers/all-MiniLM-L6-v2` encodes chunks into vectors.
-    *   **Storage:** `ChromaDB` (Local/Cloud supported) stores vectors and metadata.
+## 5. Prompt Engineering
+The system uses a strictly engineered prompt to enforce grounding. Key aspects include:
+-   **Role Definition**: The model is defined as a "strict policy assistant."
+-   **Negative Constraints**: Explicit instructions to "Do NOT make up information" and "Do NOT use outside knowledge."
+-   **Fallback Mechanism**: Instructions to state "I'm sorry, but this information is not available..." if the context is insufficient.
+-   **Conflict Resolution**: Instructions to clearly state if conflicting information is found in the context.
 
-2.  **Retrieval:**
-    *   **Query Embedding:** User question is embedded using the same model.
-    *   **Similarity Search:** System retrieves top-k (default 3) chunks based on cosine similarity.
-    *   **Relevance Check:** A threshold mechanism filters out irrelevant chunks to trigger fallback responses.
+## 6. Edge Case Handling
+-   **No Relevant Documents**: If the vector search returns results that are valid but contain no relevant answers (or if the LLM determines the context doesn't answer the question), the model is instructed to refuse the request politely.
+-   **Out of Domain Questions**: Questions unrelated to the provided policies will result in a standard refusal message, as the grounded context will not contain the answer.
 
-3.  **Generation:**
-    *   **LLM:** Groq (e.g., `llama3-70b-8192` or `mixtral-8x7b-32768`) generates the answer.
-    *   **Prompting:** A strict prompt (Prompt V2) enforces "No Hallucination" rules.
-
-## Setup & Run
+## 7. Deployment & Setup
+The application is built with Streamlit and designed to run on the Streamlit Community Cloud or locally.
 
 ### Prerequisites
-*   Python 3.10+
-*   Groq API Key
+-   Python 3.10+
+-   A Groq Cloud API Key (`GROQ_API_KEY`)
 
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repo-url>
-    cd rag-policy-assistant
-    ```
-
-2.  **Create a virtual environment:**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-
-3.  **Install dependencies:**
+### Local Setup
+1.  Clone the repository.
+2.  Install dependencies:
     ```bash
     pip install -r requirements.txt
     ```
+3.  Create a `.env` file and add your API keys:
+    ```env
+    # Required for LLM
+    GROQ_API_KEY=your_groq_api_key_here
 
-4.  **Configure Environment:**
-    *   Rename `.env.example` to `.env`.
-    *   Add your Groq API Key: `GROQ_CLOUD_API_KEY=your_key_here`.
+    # Optional: For ChromaDB Cloud (defaults to local if not set)
+    CHROMA_API_KEY=your_chroma_api_key
+    CHROMA_TENANT=your_tenant_id
+    CHROMA_DATABASE=your_database_name
+    ```
+4.  Run the application:
+    ```bash
+    streamlit run app.py
+    ```
 
-### Running the Application
+## 8. Trade-offs and Design Decisions
+1.  **Strict Refusal vs. Helpfulness**: The system leans heavily towards strict refusal. If the answer isn't explicitly in the text, it will not attempt to answer using general knowledge. This trades off "chatty" helpfulness for factual accuracy and safety.
+2.  **Simple Chunking vs. Semantic Splitting**: Standard recursive character splitting was chosen over semantic or agentic splitting. While semantic splitting might yield cleaner boundaries, recursive splitting is deterministic, faster to implement, and sufficiently effective for structured policy documents.
 
-Start the Streamlit UI:
-```bash
-streamlit run app.py
-```
-The first run will automatically index the documents found in `data/`.
-
-### Running Evaluation
-
-Execute the evaluation script to test the system:
-```bash
-python -m src.evaluator
-```
-Results specific to your documents will be saved to `evaluation_results.csv`.
-
-## Chunking Strategy
-
-We use **Recursive Character Splitting** with a target size of **500 tokens** and **75 tokens overlap**.
-
-*   **Rationale:** 
-    *   **Size (500 tokens):** Large enough to capture full policy clauses (context) but small enough to retrieve precise segments.
-    *   **Overlap (75 tokens):** Prevents cutting off sentences or context at the edges of chunks, ensuring the LLM has complete statements.
-    *   **Tokenizer:** Using `tiktoken` (cl100k_base) ensures we respect the LLM's context window accurately compared to simple character counting.
-
-## Prompt Engineering
-
-### Prompt V1 (Baseline)
-A simple "Answer the question based on context" prompt. 
-*   *Weakness:* Prone to using outside knowledge or hallucinating if context is vague.
-
-### Prompt V2 (Strict - Implemented)
-Explicitly designed to prevent hallucinations.
-*   **Constraint 1:** "Answer ONLY from retrieved context."
-*   **Constraint 2:** "If answer is not found, state: 'I'm sorry, but this information is not available...'"
-*   **Structure:** Forces structured/bullet-point output for readability.
-*   **Negative Constraint:** "Do NOT use outside knowledge."
-
-## Evaluation
-
-The system is evaluated on 5-8 questions covering fully answerable, partially answerable, and unanswerable scenarios.
-
-| Question Type | Status | Goal |
-| :--- | :--- | :--- |
-| **Fully Answerable** | ✅ | Retrieve correct clause (e.g., "30 days") and answer accurately. |
-| **Partially Answerable** | ⚠️ | Retrieve relevant section but state ambiguity if details are missing. |
-| **Unanswerable** | ❌ | Retrieve NO relevant chunks or low similarity -> Return Refusal. |
-
-*Sample Results Table (Run `src.evaluator` to generate actuals):*
-
-| Question | Expected | Actual Result (Model) | Evaluation |
-| :--- | :--- | :--- | :--- |
-| "What is the return window?" | "30 days" | "You can return items within 30 days of receipt." | ✅ Correct |
-| "Who is the CEO?" | Refusal | "I'm sorry, but this information is not available in the company policy documents." | ✅ Correct Refusal |
-| "Can I pay with Bitcoin?"| Refusal | "I'm sorry, but this information is not available..." | ✅ Correct Refusal |
-
-## Key Trade-offs
-*   **Local vs Cloud Vector Store:** We default to local ChromaDB for simplicity and reproducibility. Cloud integration is scaffolded but not active without valid credentials.
-*   **Retrieval Granularity:** Smaller chunks retrieval might miss broader context; larger chunks might dilute specific answers. 500 tokens is a balanced choice for policy docs.
-*   **Strictness vs Helpfulness:** The system is biased towards *precision* (refusing to answer) rather than *recall* (guessing), which is critical for legal/policy bots.
-
-## Future Improvement
-**Source Attribution in UI:** Currently, the UI shows the answer. Ideally, it should highlight the specific PDF page number and paragraph used to generate the answer for verification.
+## 9. Future Improvements
+-   **Hybrid Search**: Implementing a hybrid search approach (combining keyword/BM25 with semantic vector search) could improve retrieval accuracy for specific terminology (e.g., specific policy codes or exact phrases).
+-   **Citing Sources**: Modifying the pipeline to return and display the specific page numbers or filenames alongside the answer for better verification.
+-   **Metadata Filtering**: Adding metadata tags (e.g., "shipping", "refund") to chunks to allow for pre-filtering based on the query intent.
