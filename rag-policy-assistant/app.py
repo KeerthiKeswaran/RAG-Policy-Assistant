@@ -54,7 +54,7 @@ def initialize_rag_system():
             
             # 2. Vector Store Setup
             st.write("💾 Connecting to Vector Database (ChromaDB)...")
-            vector_store = VectorStore(persist_directory="chroma_db", collection_name="policies")
+            vector_store = VectorStore(collection_name="policies")
             
             # Check documents
             count = vector_store.collection.count()
