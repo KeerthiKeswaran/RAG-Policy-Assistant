@@ -80,3 +80,62 @@ The application is built with Streamlit and designed to run on the Streamlit Com
 -   **Hybrid Search**: Implementing a hybrid search approach (combining keyword/BM25 with semantic vector search) could improve retrieval accuracy for specific terminology (e.g., specific policy codes or exact phrases).
 -   **Citing Sources**: Modifying the pipeline to return and display the specific page numbers or filenames alongside the answer for better verification.
 -   **Metadata Filtering**: Adding metadata tags (e.g., "shipping", "refund") to chunks to allow for pre-filtering based on the query intent.
+
+## 10. Evaluation
+
+The following Q&A pairs demonstrate the system's performance on key policy questions:
+
+**Q1. What is the time limit for requesting a refund after delivery?**
+> **Answer:**
+> The time limit for requesting a refund after delivery is 30 calendar days from the confirmed delivery date.
+>
+> **Score:** ✅
+
+**Q2. How can a customer cancel an order before it is shipped?**
+> **Answer:**
+> A customer can cancel an order before shipment based on its status:
+>
+> Orders in Pending/Awaiting Payment status can be cancelled through the account dashboard or customer support.
+>
+> Orders in Processing status require contacting customer support, and cancellation is not guaranteed.
+>
+> Customized or personalized goods can be cancelled within two hours of order placement.
+>
+> High-value orders may require additional confirmation before cancellation.
+>
+> **Score:** ✅
+
+**Q3. Can a customer return a discounted item purchased during a sale?**
+> **Answer:**
+> The policy documents do not explicitly mention return eligibility for discounted or sale items.
+> Therefore, this information is not available in the company policy documents.
+>
+> **Score:** (Correct refusal with clear limitation)
+
+**Q4. What happens if a package is delayed due to courier issues?**
+> **Answer:**
+> The shipping policy does not specify how courier-related delays are handled or whether compensation is provided.
+> As a result, this information is not available in the company policy documents.
+>
+> **Score:** (Correct refusal with clear limitation)
+
+**Q5. Does the company offer refunds for digital products like software subscriptions?**
+> **Answer:**
+> The policy references digital products but does not clearly state whether refunds are offered for software subscriptions.
+> Therefore, this information is not available in the company policy documents.
+>
+> **Score:** (Correct unanswerable handling)
+
+**Q6. What is the customer support phone number for urgent issues?**
+> **Answer:**
+> The policy documents do not provide any customer support phone number.
+> This information is not available in the company policy documents.
+>
+> **Score:** (Correct unanswerable handling)
+
+**Q7. Do employees receive special internal discounts?**
+> **Answer:**
+> Employee benefits or internal discounts are not mentioned in the policy documents.
+> This information is not available in the company policy documents.
+>
+> **Score:** (Correct unanswerable handling)
